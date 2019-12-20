@@ -419,7 +419,7 @@ for tree={anchor=center, draw,
 
 Now, we can use this model with a test data set. Let's say our test data is just a single rater, e.g. as in \cref{tab:SingleRater}.
 \setlength\tabcolsep{0pt}
-\begin{table}[htb]
+\begin{table}[htb!]
     \centering
         \resizebox{60mm}{!}{%
             \begin{tabular}{|P{20mm}|P{20mm}|P{21mm}|P{21mm}|}
@@ -528,8 +528,31 @@ The third point of difference from Random Forest is that each stump considers th
     \item Each stump tree takes into consideration the prediction of the previous stump
 \end{enumerate}
 
-For the actual calculation we begin 
-by initializing weights on each instance of our data set. These are all simply set to $w_{i}=1 / N, i=1,2, \ldots, N$.
+The actual calculation algorithm is as follow
+\begin{enumerate}
+    \item 
+    We begin by initializing weights on each instance of our data set. These are all simply set to $w_{k}=1 / N, k=1,2, \ldots, N$.
+    \item For every iteration $m=1,2,3, \ldots, M$ we individually modify each weight in the following way
+    \begin{enumerate}
+        \item Calculate the Gini index for every stump in the data, pick the stump with the lowest Gini index as this round's stump. For $m=2,3, \ldots, M$ we use a \textit{Weighted Gini Index} where we, simply put, calculate the probabilities of the Gini Index weighted by the relevant sample weights
+        \item Find the incorrect classifications and sum the corresponding weights.
+        In the $m=1$ example \cref{fig:AdaBoostAlogrithm} this would simply be $err_1 = 1/4$ for "Good for kids", as there is only one instance leading to an incorrect prediction.
+        \item Calculate \textit{The Amount of Say}, 
+        \begin{equation}
+        \alpha_{m}=\log \left(\left(1-\operatorname{err}_{m}\right) / \operatorname{err}_{m}\right)
+        \end{equation}
+        \item Increase the sample weights of the instances $i$ corresponding to an incorrect classification 
+        \begin{equation}
+            w_{i} \leftarrow w_{i} \cdot \exp \left(\alpha_{m}\right)
+        \end{equation}
+        \item Decrease the sample weights of the instances $j$ corresponding to a correct classification
+        \begin{equation}
+            w_{j} \leftarrow w_{j} \cdot \exp \left(-\alpha_{m}\right)
+        \end{equation}
+        \item Normalize sample weights so that \\ $\sum_k^N \omega_k =1$
+    \end{enumerate}
+\end{enumerate}\cite{STATQUEST}\cite[p.~339]{statelem}
+
 
 \setlength\tabcolsep{0pt}
 \begin{table}[htb]
@@ -537,69 +560,86 @@ by initializing weights on each instance of our data set. These are all simply s
     \begin{tikzpicture}
         \node (a) at (0,0){
         \resizebox{60mm}{!}{%
-            \begin{tabular}{|P{15mm}||P{19mm}|P{19mm}|P{21mm}|P{19mm}|}
+            \begin{tabular}{|P{20mm}||P{19mm}|P{19mm}|P{21mm}|P{19mm}|}
                             \hline
                \cellcolor[HTML]{FFCCC9} Sample weight & \cellcolor[HTML]{9698ED} Breakfast & \cellcolor[HTML]{9698ED}Dinner & \cellcolor[HTML]{9698ED}Good for kids & \cellcolor[HTML]{67FD9A}High Rating \\ \hhline{=||====}
-            1/4 & Yes       & Yes       & No        & Yes       \\ \hline
-            1/4 & Yes       & No        & No        & No        \\ \hline
-            1/4 & Yes       & Yes       & No        & Yes       \\ \hline
-            1/4 & No        & Yes       & Yes       & Yes       \\ \hline
+            1/4 & Yes       & Yes       & Yes        & Yes       \\ \hline
+            1/4 & Yes       & Yes        & No        & No        \\ \hline
+            1/4 & Yes       & Yes       & Yes        & Yes       \\ \hline
+            1/4 & Yes        & No       & No       & Yes       \\ \hline
             \end{tabular}}};
+            
             \node[yshift=-2cm] (b) at (a.south){
             \setlength\tabcolsep{0pt}
             \centering
             \resizebox{60mm}{!}{%
-            \begin{tabular}{|P{15mm}||>{\columncolor[HTML]{EFEFEF}}>{\leavevmode\color[HTML]{C0C0C0}}P{19mm}|>{\columncolor[HTML]{EFEFEF}}>{\leavevmode\color[HTML]{C0C0C0}}P{19mm}|P{21mm}|P{19mm}|}
+            \begin{tabular}{|P{20mm}||>{\columncolor[HTML]{EFEFEF}}>{\leavevmode\color[HTML]{C0C0C0}}P{19mm}|>{\columncolor[HTML]{EFEFEF}}>{\leavevmode\color[HTML]{C0C0C0}}P{19mm}|P{21mm}|P{19mm}|}
                             \hline
                \cellcolor[HTML]{FFCCC9} Sample weight & \cellcolor[HTML]{EFEFEF} Breakfast & \cellcolor[HTML]{EFEFEF}Dinner & \cellcolor[HTML]{9698ED}Good for kids & \cellcolor[HTML]{67FD9A}High Rating \\ \hhline{=||====}
-            1/4 & Yes       & Yes       & No        & Yes       \\ \hline
-            1/4 & Yes       & No        & No        & No        \\ \hline
-            1/4 & Yes       & Yes       & No        & Yes       \\ \hline
-            1/4 & No        & Yes       & Yes       & Yes       \\ \hline
+            1/4 & Yes       & Yes       & Yes        & Yes       \\ \hline
+            1/4 & Yes       & Yes        & No        & No        \\ \hline
+            1/4 & Yes       & Yes       & Yes        & Yes       \\ \hline
+            1/4 & Yes        & No       & No       & Yes       \\ \hline
             \end{tabular}
             }
             };
-        \draw[->,thick](a)--(b) node[pos=0.5,right] {Check each stump(one feature)} node[pos=0.5,left] {\textbf{Step 2.}};
+        \draw[->,thick](a)--(b) node[pos=0.5,right] {Check stump} node[pos=0.5,left] {\textbf{Step 2.}};
         \draw[->,thick]($(a.north)+(0,1)$)--(a.north) node[pos=0.5,right,text width=4cm] {Initialize weights}
         node[pos=0.5,left] {\textbf{Step 1.}};
         
-        \node[yshift=-2cm] (c) at (b.south){};
-        \draw[->,thick](b.south)--(c) node[pos=0.5,right,text width=4cm] {Randomly pick \\ two feature-columns};
-        
-            \node[yshift=-2.5cm] (d) at (c.south){
-            \setlength\tabcolsep{0pt}
-            \centering
-            \resizebox{27mm}{!}{%
-            \begin{forest}
-            for tree={anchor=center,fit=band, draw,
+        \node[yshift=-2cm] (c) at (b.south){
+        \begin{forest}
+            for tree={draw,fit=band,
                 rounded corners,s sep+=1pt,l sep+=8pt,font=\tiny, minimum width=1cm, minimum height = 0.5cm, 
                   edge={black, line width=0.5mm,->}}
-            [Dinner,tikz={\node [draw, black, fit=()(!1)(!2)]{};}, fill=red!30
-            %%% Dinner left
-            [,fill=blue!30,edge label ={node[color=blue,midway,above,sloped,font=\tiny]{Yes}}][,fill=blue!30,edge label ={node[color=red,midway,above,sloped,font=\tiny]{No}}]]
-            \end{forest}
-            }
-            };
-        \draw[->,thick](c.south)--($(d.north)+(0,0.2)$) node[pos=0.5,right,text width=4cm] {Lowest impurity of the two feature-columns \\ gives the root node}
+            [Good for kids,tikz={\node [draw, black, fit=()(!1)(!2)]{};},fill=red!40
+            %%%
+            [\begin{tabular}{|c|c|}
+            \hline
+            \multicolumn{2}{|c|}{{\color[HTML]{000000} High Rating}} \\ \hline
+            {\color[HTML]{3166FF} Correct} & {\color[HTML]{FE0000} Incorrect} \\ \hline
+            {\color[HTML]{3166FF} 2} & {\color[HTML]{FE0000} 0} \\ \hline
+            \end{tabular},fill=green!40,edge label ={node[color=blue,midway,above,sloped,font=\tiny]{Yes}}]
+            %
+            [\begin{tabular}{|c|c|}
+            \hline
+            \multicolumn{2}{|c|}{{\color[HTML]{000000} High Rating}} \\ \hline
+            {\color[HTML]{3166FF} Correct} & {\color[HTML]{FE0000} Incorrect} \\ \hline
+            {\color[HTML]{3166FF} 1} & {\color[HTML]{FE0000} 1} \\ \hline
+            \end{tabular},fill=green!40,edge label ={node[color=red,midway,above,sloped,font=\tiny]{No}}]]
+            \node[below] at (0,-2) {Gini index $=0.25$};
+        \end{forest}
+        };
+        \draw[->,thick](b.south)--(c) node[pos=0.5,right,text width=4cm] {};
+        
+            \node[yshift=-2.5cm] (d) at (c.south){.};
+        \draw[->,thick](c.south)--($(d.north)+(0,0.2)$) node[pos=0.5,right,text width=4cm] {Repeat step. 2 for all stumps \\ i.e. Breakfast and Dinner}
         node[pos=0.5,left] {\textbf{Step 3.}}
         ;
         
-            \node[yshift=-2.5cm] (e) at (d.south){
-            \setlength\tabcolsep{0pt}
-            \centering
-            \resizebox{48mm}{!}{%
-            \begin{tabular}{|P{3mm}|P{19mm}|P{21mm}|P{19mm}|}
+            \node[yshift=-2cm] (e) at (d.south){\begin{tabular}{|c|c|c|}
             \hline
-             i & \cellcolor[HTML]{9698ED}Breakfast & \cellcolor[HTML]{9698ED}Good for kids & \cellcolor[HTML]{67FD9A}High Rating \\ \hhline{====}
-              1 & Yes   & No   & Yes    \\ \hline
-              1 & Yes   & No    & Yes   \\ \hline
-              4 & No    & Yes   & Yes   \\ \hline
-              2 & Yes   & No    & No    \\ \hline
-            \end{tabular}}
-            };
-        \draw[->,thick]($(d.south)+(0,-0.2)$)--(e) node[pos=0.5,right,text width=4cm] {Repeat from step 2. using the remaining columns, at each node respectively};
+            \multicolumn{3}{|c|}{Gini indicies}      \\ \hline
+            Breakfast \      & Dinner \     & Good. \     \\ \hline
+            0.375          & 0.33        & 0.25      \\ \hline
+            \multicolumn{3}{|c|}{"Dinner" is the first stump} \\ \hline
+            \end{tabular}};
+        \draw[->,thick]($(d.south)+(0,0.2)$)--(e) node[pos=0.5,right,text width=4cm] {Compare Gini indicies}
+        node[pos=0.5,left] {\textbf{Step 4.}}
+        ;
+                \node[yshift=-2cm] (f) at ($(e)+(0,-0.9)$){
+        \resizebox{60mm}{!}{%
+            \begin{tabular}{|P{20mm}||P{19mm}|P{19mm}|P{21mm}|P{19mm}|}
+                            \hline
+               \cellcolor[HTML]{FFCCC9} Sample weight & \cellcolor[HTML]{9698ED} Breakfast & \cellcolor[HTML]{9698ED}Dinner & \cellcolor[HTML]{9698ED}Good for kids & \cellcolor[HTML]{67FD9A}High Rating \\ \hhline{=||====}
+            1/6 & Yes       & Yes       & Yes        & Yes       \\ \hline
+            1/6 & Yes       & Yes        & No        & No        \\ \hline
+            1/6 & Yes       & Yes       & Yes        & Yes       \\ \hline
+            1/2 & Yes        & No       & No       & Yes       \\ \hline
+            \end{tabular}}};
+        \draw[->,thick](e)--(f) node[pos=0.5,right,text width=4cm] {Update weights with \textit{Amount of Say formulas}} node[pos=0.5,left] {\textbf{Step 5.}};
     \end{tikzpicture}
-    \caption{This figure shows the process of bootstrapping and building a tree from the bootstrapped data. The latter is done by picking a random subset of features-columns. In this case the subset size was chosen as two}
+    \caption{Rough sketch of first round($m=1$) of an Ada Boost iteration scheme. Values are fictional and just for illustration. \cite{STATQUEST}}
     \label{fig:AdaBoostAlogrithm}
 \end{table}
 
